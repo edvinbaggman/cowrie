@@ -25,6 +25,7 @@ from __future__ import annotations
 import hashlib
 import os
 import tempfile
+import json
 from types import TracebackType
 from typing import Any
 
@@ -60,6 +61,29 @@ class Artifact:
         self.close()
         return True
 
+    def addFileCount(self, shasum: str) -> None:
+
+        # Path to counts.json
+        countsFile = os.path.join(self.artifactDir, "counts.json")
+
+        # Open file and load data
+        try:
+            with open(countsFile, "r") as file:
+                counts = json.load(file)
+        except (FileNotFoundError, json.JSONDecodeError):
+            # File does not exist or is empty/corrupt
+            counts = {}
+        
+        # Update data
+        if shasum in counts:
+            counts[shasum] += 1
+        else:
+            counts[shasum] = 1
+
+        # Write updated data
+        with open(countsFile, "w") as file:
+            json.dump(counts, file)
+
     def write(self, data: bytes) -> None:
         self.fp.write(data)
 
@@ -91,5 +115,7 @@ class Artifact:
             umask = os.umask(0)
             os.umask(umask)
             os.chmod(self.shasumFilename, 0o666 & ~umask)
+
+        self.addFileCount(self.shasum)
 
         return self.shasum, self.shasumFilename
