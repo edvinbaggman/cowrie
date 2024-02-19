@@ -25,7 +25,7 @@ from __future__ import annotations
 import hashlib
 import os
 import tempfile
-import json
+from datetime import datetime
 from types import TracebackType
 from typing import Any
 
@@ -61,28 +61,19 @@ class Artifact:
         self.close()
         return True
 
-    def addFileCount(self, shasum: str) -> None:
+    def logFile(self, shasum: str) -> None:
 
-        # Path to counts.json
-        countsFile = os.path.join(self.artifactDir, "counts.json")
+        # Get current time
+        now = datetime.now()
+        datestring = now.strftime("%Y-%m-%d %H:%M:%S")
 
-        # Open file and load data
-        try:
-            with open(countsFile, "r") as file:
-                counts = json.load(file)
-        except (FileNotFoundError, json.JSONDecodeError):
-            # File does not exist or is empty/corrupt
-            counts = {}
-        
-        # Update data
-        if shasum in counts:
-            counts[shasum] += 1
-        else:
-            counts[shasum] = 1
+        # Path to downloaded.txt
+        downloaded = os.path.join(self.artifactDir, "downloaded.txt")
 
-        # Write updated data
-        with open(countsFile, "w") as file:
-            json.dump(counts, file)
+        # Open file and write data
+        with open(downloaded, "a") as file:
+            file.write(shasum + ", " + datestring + "\n")
+
 
     def write(self, data: bytes) -> None:
         self.fp.write(data)
@@ -116,6 +107,6 @@ class Artifact:
             os.umask(umask)
             os.chmod(self.shasumFilename, 0o666 & ~umask)
 
-        self.addFileCount(self.shasum)
+        self.logFile(self.shasum)
 
         return self.shasum, self.shasumFilename
